@@ -13,3 +13,101 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  name              String
+  emailVerified     Boolean   @default(false)
+  resetToken        String?
+  resetTokenExpires DateTime?
+  photos            Photo[]
+  albums            Album[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Photo {
+  id           String       @id @default(uuid())
+  userId       String
+  filename     String
+  originalName String
+  filePath     String
+  fileSize     Int
+  mimeType     String
+  width        Int?
+  height       Int?
+  metadata     Json?
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  albumPhotos  AlbumPhoto[]
+  photoShares  PhotoShare[]
+  photoTags    PhotoTag[]
+  coverAlbums  Album[]      @relation("CoverPhoto")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("photos")
+}
+
+model Album {
+  id            String        @id @default(uuid())
+  userId        String
+  name          String
+  description   String?
+  coverPhotoId  String?
+  isPublic      Boolean       @default(false)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coverPhoto    Photo?        @relation("CoverPhoto", fields: [coverPhotoId], references: [id])
+  albumPhotos   AlbumPhoto[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("albums")
+}
+
+model AlbumPhoto {
+  id        String   @id @default(uuid())
+  albumId   String
+  photoId   String
+  order     Int      @default(0)
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([albumId, photoId])
+  @@map("album_photos")
+}
+
+model PhotoShare {
+  id         String     @id @default(uuid())
+  photoId    String
+  shareType  ShareType
+  shareUrl   String
+  qrCode     String?
+  expiresAt  DateTime?
+  photo      Photo      @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+
+  @@map("photo_shares")
+}
+
+model PhotoTag {
+  id        String   @id @default(uuid())
+  photoId   String
+  tagName   String
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([photoId, tagName])
+  @@map("photo_tags")
+}
+
+enum ShareType {
+  QR
+  LINK
+  SOCIAL
+}
